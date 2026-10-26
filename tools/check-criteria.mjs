@@ -13,7 +13,8 @@
  * Exit code 0 when every criterion passes, 1 otherwise.
  */
 
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, relative, resolve } from 'node:path';
 
@@ -23,16 +24,45 @@ const REPO_ROOT = join(HERE, '..');
 // Defaults to the real backlog. The optional argument exists so the checker can be run
 // against a deliberately broken fixture, because a gate nobody has watched fail is not
 // yet known to be a gate.
-const BACKLOG = process.argv[2]
-  ? resolve(process.cwd(), process.argv[2])
-  : join(REPO_ROOT, 'docs', 'backlog.md');
+/**
+ * Arguments: an optional backlog path, and an optional `--changed-since <ref>`.
+ *
+ * The path exists so the checker can be run against a deliberately broken fixture,
+ * because a gate nobody has watched fail is not yet known to be a gate.
+ */
+const ARGS = process.argv.slice(2);
+const SINCE_INDEX = ARGS.indexOf('--changed-since');
+const CHANGED_SINCE = SINCE_INDEX >= 0 ? ARGS[SINCE_INDEX + 1] : null;
+// The guard on SINCE_INDEX matters: without it, an absent flag makes SINCE_INDEX -1 and
+// the "skip the flag's value" rule silently swallows the first positional argument, so
+// a fixture path would be ignored and the real backlog checked instead.
+const SINCE_VALUE_INDEX = SINCE_INDEX >= 0 ? SINCE_INDEX + 1 : -1;
+const POSITIONAL = ARGS.filter((arg, i) =>
+  !arg.startsWith('--') && i !== SINCE_VALUE_INDEX);
+
+const USING_REAL_BACKLOG = POSITIONAL.length === 0;
+const BACKLOG = USING_REAL_BACKLOG
+  ? join(REPO_ROOT, 'docs', 'backlog.md')
+  : resolve(process.cwd(), POSITIONAL[0]);
 
 // What to print in diagnostics: repo-relative where possible, so the output is clickable
 // from the repository root and honest about which file was actually read.
 const DISPLAY = relative(REPO_ROOT, BACKLOG).split('\\').join('/') || BACKLOG;
 
 const ID_PATTERN = /^AC-(\d{2})\.\d+$/;
-const VERIFIED_PATTERN = /^(Pending M\d+|T-[A-Z0-9]+-\d+)$/;
+const TEST_ID_PATTERN = /T-[A-Z0-9]+-\d+/g;
+const ONE_TEST_ID = /^T-[A-Z0-9]+-\d+$/;
+
+/**
+ * Where tests live, for the traceability checks below.
+ *
+ * Fixtures are excluded deliberately: they contain invented identifiers used to prove the
+ * checker fails when it should, and treating those as real tests would make the fixture
+ * suite impossible to maintain.
+ */
+const TEST_ROOTS = ['api/src/test', 'tools'];
+const TEST_EXCLUDE = ['tools/fixtures'];
+const TEST_EXTENSIONS = ['.java', '.mjs', '.js'];
 
 /**
  * What kind of claim a criterion makes, and for numbers, where the number came from.
@@ -62,6 +92,25 @@ const ORIGIN_PATTERN = /^Origin:\s*\S/;
 // issue exists are checked against this rather than taken on trust, so the disclosure
 // cannot be quietly deleted while the criterion still claims to be satisfied.
 const TRACKING_PATTERN = /^Tracking:\s*(https?:\/\/\S+)\s*$/;
+
+/**
+ * A criterion is verified by a milestone it is waiting on, or by one or more tests.
+ *
+ * More than one is normal and should not be discouraged: AC-01.3 is checked in the domain,
+ * against the database, and at the HTTP boundary, and naming only one of those three would
+ * leave the other two looking like tests nothing asked for.
+ */
+function parseVerifiedBy(value) {
+  const text = (value ?? '').trim();
+  if (/^Pending M\d+$/.test(text)) {
+    return { kind: 'pending', tests: [] };
+  }
+  const parts = text.split(',').map((part) => part.trim()).filter(Boolean);
+  if (parts.length > 0 && parts.every((part) => ONE_TEST_ID.test(part))) {
+    return { kind: 'tests', tests: parts };
+  }
+  return { kind: 'invalid', tests: [] };
+}
 
 /** Split a Markdown table row into trimmed cells, dropping the empty edges. */
 function cells(line) {
@@ -203,15 +252,176 @@ function check(sections) {
       });
     }
 
-    if (!VERIFIED_PATTERN.test(c.verified ?? '')) {
+    const verification = parseVerifiedBy(c.verified);
+    if (verification.kind === 'invalid') {
       problems.push({
         line: c.line, id: c.id,
-        message: `"Verified by" must name a test such as T-RANK-001 or a milestone such as Pending M4, found "${c.verified ?? ''}"`,
+        message: `"Verified by" must name one or more tests such as T-RANK-001, `
+          + `or a milestone such as Pending M4, found "${c.verified ?? ''}"`,
+      });
+    }
+    c.tests = verification.tests;
+  }
+
+  return { problems, all };
+}
+
+/**
+ * Every test identifier that appears in the test sources, mapped to the file it lives in.
+ *
+ * Scanning the sources rather than trusting the backlog is the whole point: the backlog
+ * is the thing being checked, so it cannot also be the evidence.
+ */
+async function scanTestIds() {
+  const index = new Map();
+
+  async function walk(directory) {
+    let entries;
+    try {
+      entries = await readdir(directory, { withFileTypes: true });
+    } catch {
+      return; // A root that does not exist yet is not an error.
+    }
+    for (const entry of entries) {
+      const full = join(directory, entry.name);
+      const rel = relative(REPO_ROOT, full).split('\\').join('/');
+      if (TEST_EXCLUDE.some((skip) => rel === skip || rel.startsWith(`${skip}/`))) {
+        continue;
+      }
+      if (entry.isDirectory()) {
+        await walk(full);
+      } else if (TEST_EXTENSIONS.some((ext) => entry.name.endsWith(ext))) {
+        const text = await readFile(full, 'utf8');
+        for (const match of text.matchAll(TEST_ID_PATTERN)) {
+          if (!index.has(match[0])) {
+            index.set(match[0], rel);
+          }
+        }
+      }
+    }
+  }
+
+  for (const root of TEST_ROOTS) {
+    await walk(join(REPO_ROOT, root));
+  }
+  return index;
+}
+
+/**
+ * Traceability, in both directions.
+ *
+ * DO-178C treats an artifact that traces to nothing as a finding in its own right, not
+ * merely as untidiness, and the reasoning carries over. A criterion naming a test that
+ * does not exist is a backlog telling a comfortable lie. A test claiming an identifier
+ * that no criterion asks for is work whose purpose nobody wrote down, and it is also how
+ * a rename quietly severs the link: the old identifier vanishes from the sources while
+ * the backlog goes on citing it.
+ */
+function checkTraceability(all, testIndex) {
+  const problems = [];
+  const claimed = new Set();
+
+  for (const c of all) {
+    for (const testId of c.tests ?? []) {
+      claimed.add(testId);
+      if (!testIndex.has(testId)) {
+        problems.push({
+          line: c.line, id: c.id,
+          message: `names ${testId}, which appears in no test source. `
+            + `Either the test was renamed or it was never written.`,
+        });
+      }
+    }
+  }
+
+  for (const [testId, file] of [...testIndex.entries()].sort()) {
+    if (!claimed.has(testId)) {
+      problems.push({
+        line: 0, id: testId,
+        message: `is declared in ${file} but no criterion claims it. `
+          + `Add it to a criterion's "Verified by", or stop labelling it.`,
       });
     }
   }
 
-  return { problems, all };
+  return problems;
+}
+
+/**
+ * Change-impact analysis, borrowed from IEC 62304 clause 7.3.3.
+ *
+ * The rule there is that a change upstream forces review of everything downstream. The
+ * failure it prevents is the one that quietly ruins living documentation: a criterion is
+ * reworded, its test is not revisited, and the two drift apart while the build stays
+ * green and the backlog keeps claiming the test proves something it no longer proves.
+ *
+ * This does not demand the test change. Rewording a criterion for clarity is legitimate.
+ * It demands that somebody say so, by adding a `Reviewed-criteria: AC-01.4` trailer to a
+ * commit message in the range. The cost of the rule is one line; its value is that the
+ * acknowledgement is explicit and recorded rather than assumed.
+ */
+function checkChangeImpact(all, testIndex, sinceRef) {
+  const git = (args) =>
+    execFileSync('git', args, { cwd: REPO_ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+
+  try {
+    git(['rev-parse', '--verify', `${sinceRef}^{commit}`]);
+  } catch {
+    console.log(`\nchange impact: skipped, cannot resolve "${sinceRef}" in this checkout`);
+    return [];
+  }
+
+  const backlogPath = relative(REPO_ROOT, BACKLOG).split('\\').join('/');
+  const diff = git(['diff', '--unified=0', sinceRef, '--', backlogPath]);
+
+  const touched = new Set();
+  for (const line of diff.split('\n')) {
+    if (!/^[+-]\s*\|\s*AC-/.test(line)) continue;
+    const match = /AC-\d{2}\.\d+/.exec(line);
+    if (match) touched.add(match[0]);
+  }
+
+  if (touched.size === 0) {
+    console.log('\nchange impact: no criterion text changed in this range');
+    return [];
+  }
+
+  const changedFiles = new Set(
+    git(['diff', '--name-only', sinceRef]).split('\n').map((f) => f.trim()).filter(Boolean));
+  const messages = git(['log', '--format=%B', `${sinceRef}..HEAD`]);
+
+  const problems = [];
+  const reviewed = [];
+
+  for (const id of [...touched].sort()) {
+    const criterion = all.find((c) => c.id === id);
+    // A criterion that was deleted outright has nothing left to drift from.
+    if (!criterion) continue;
+
+    const acknowledged =
+      new RegExp(`Reviewed-criteria:[^\\n]*\\b${id.replace('.', '\\.')}\\b`).test(messages);
+    if (acknowledged) {
+      reviewed.push(id);
+      continue;
+    }
+
+    const stale = (criterion.tests ?? []).filter((testId) => {
+      const file = testIndex.get(testId);
+      return file && !changedFiles.has(file);
+    });
+
+    if (stale.length > 0) {
+      problems.push({
+        line: criterion.line, id,
+        message: `text changed but ${stale.join(', ')} did not, and no commit in this range `
+          + `carries "Reviewed-criteria: ${id}". Revisit the test, or record that you did.`,
+      });
+    }
+  }
+
+  console.log(`\nchange impact: ${touched.size} criterion row(s) changed since ${sinceRef}`
+    + (reviewed.length ? `, ${reviewed.length} acknowledged (${reviewed.join(', ')})` : ''));
+  return problems;
 }
 
 function report(all) {
@@ -268,6 +478,19 @@ async function main() {
   }
 
   report(all);
+
+  // Traceability and change impact are about this repository's real backlog and its real
+  // tests. Running them against a fixture, whose identifiers are invented to exercise the
+  // other rules, would report nothing but noise.
+  if (USING_REAL_BACKLOG) {
+    const testIndex = await scanTestIds();
+    console.log(`\ntest identifiers found in sources: ${testIndex.size}`);
+    problems.push(...checkTraceability(all, testIndex));
+
+    if (CHANGED_SINCE) {
+      problems.push(...checkChangeImpact(all, testIndex, CHANGED_SINCE));
+    }
+  }
 
   if (problems.length > 0) {
     console.error(`\n${problems.length} problem(s) in ${DISPLAY}:\n`);

@@ -25,7 +25,7 @@ properties that hold for any parameterization.
 "Match score below 0.25" is a number somebody chose. "No destination below the cutoff
 outranks one at or above it, **for any cutoff**" cannot be satisfied by choosing a
 convenient number, which is the single strongest objection to quantified requirements.
-Twenty-four of this backlog's forty criteria are invariants, and that ratio is the
+Thirty-one of this backlog's forty-seven criteria are invariants, and that ratio is the
 design rather than an accident.
 
 Where a number genuinely is the honest form, [the backlog](docs/backlog.md) declares where
@@ -60,8 +60,8 @@ nothing is deployed yet, and this README will not pretend otherwise.
 | M6 | Traceability report, observability, budgets enforced as gates | Planned |
 | M7 | Demo data, documentation, release | Planned |
 
-40 acceptance criteria are defined: 24 invariants, 9 provisional thresholds, 3 categorical,
-4 measured. 12 are verified today; the rest name the milestone that will verify them. The
+47 acceptance criteria are defined: 31 invariants, 9 provisional thresholds, 3 categorical,
+4 measured. 19 are verified today; the rest name the milestone that will verify them. The
 gate prints both ratios on every run, so verification debt and uncalibrated numbers are
 visible rather than discovered later.
 
@@ -154,10 +154,25 @@ claims a measured or sourced figure without citing it, has no verification refer
 a duplicate or mismatched identifier, promises an issue it does not link, or sits under a
 story that never says where the requirement came from.
 
+It also checks traceability in **both** directions. A criterion naming a test that does
+not exist fails the build, which is what catches a rename silently making the backlog
+lie. So does a test labelled with an identifier no criterion claims, following DO-178C's
+treatment of an artifact that traces to nothing as a finding in its own right. Turning
+that on surfaced thirteen orphan tests, one of which was a whole capability the API had
+built and the backlog had never mentioned.
+
+With `--changed-since <ref>` it adds change-impact analysis, borrowed from IEC 62304
+clause 7.3.3: if a criterion's text changed and its named test did not, the build asks for
+a `Reviewed-criteria: AC-01.4` trailer on a commit in the range. It does not demand the
+test change, because rewording for clarity is legitimate. It demands that somebody say
+they looked.
+
 The gate has its own qualification suite, because a gate nobody has watched fail is not
 yet known to be a gate. One fixture breaks every rule once; the other uses every rule
 correctly. CI asserts the first is rejected and the second accepted, since a checker that
-refused everything would pass the first test while being useless.
+refused everything would pass the first test while being useless. Traceability gets its
+own probe: CI plants an orphan identifier, requires the build to go red, removes it, and
+requires it to pass again.
 
 ```bash
 node tools/check-criteria.mjs tools/fixtures/invalid-unfalsifiable.md   # must fail

@@ -185,9 +185,33 @@ difference between verification and ceremony.
 
 ## Gaps: what the prior art does that this does not
 
-Recorded honestly rather than discovered by a reviewer.
+Recorded honestly rather than discovered by a reviewer. Three of the four originally
+listed here have since been closed, and the entries are kept rather than deleted so the
+sequence is visible.
 
-- **Traceability is one-directional.** The backlog names a test; the test does not name the criterion. DO-178C treats an artifact that traces to nothing as a finding, and this project cannot currently detect an orphan test.
-- **Identifiers are not versioned.** OpenFastTrace's `req~name~1` form means changing a requirement invalidates existing coverage automatically. A bare duplicate check is the weaker version.
-- **No change-impact analysis.** IEC 62304 requires that an upstream change forces downstream review. Detecting that a criterion's text changed while its test did not is cheap in git and is probably the most useful thing still missing.
-- **The link is rename-fragile.** Renaming a test silently makes the backlog lie. Duvet's approach, putting the reference in the code where the refactor happens, is the more robust direction.
+**Closed: traceability was one-directional.** The checker now scans the test sources and
+enforces both directions. A criterion naming a test that does not exist fails the build,
+and so does a test labelled with an identifier no criterion claims. Closing this surfaced
+thirteen orphan tests, including a whole capability (fetching one destination by its
+identifier) that the API had implemented and the backlog had never mentioned. That is now
+US-07, declared as a **derived** requirement in DO-178C's sense: it came from the
+implementation rather than from a stakeholder, and saying so is the point.
+
+**Closed: no change-impact analysis.** IEC 62304 clause 7.3.3 requires that an upstream
+change forces downstream review. `--changed-since <ref>` diffs the backlog, finds the
+criteria whose rows changed, and fails if a named test did not change and no commit in the
+range carries a `Reviewed-criteria: AC-01.4` trailer. It does not demand the test change,
+because rewording for clarity is legitimate. It demands that somebody say they looked.
+
+**Closed in effect: the link was rename-fragile.** Renaming a test used to make the
+backlog lie silently. The forward check now catches it, because the old identifier
+disappears from the sources while the backlog goes on citing it. Duvet's approach of
+putting the reference in the code is still the more robust direction, since it survives
+the file moving as well as the name changing.
+
+**Still open: identifiers are not versioned.** OpenFastTrace's `req~name~1` form means
+changing a requirement automatically invalidates coverage claimed against the old
+revision. The `Reviewed-criteria` trailer achieves something similar through a human
+acknowledgement rather than through the data model, which is weaker: a trailer can be
+added without the review actually happening, where a version bump cannot be faked quite so
+cheaply.

@@ -100,7 +100,7 @@ class DestinationControllerTest {
     }
 
     @Test
-    @DisplayName("An error response leaks no stack trace or internal type names")
+    @DisplayName("T-API-004: an error response leaks no stack trace or internal type names")
     void errorResponseLeaksNothingInternal() throws Exception {
         given(catalog.findBySlug(any())).willReturn(Optional.empty());
 

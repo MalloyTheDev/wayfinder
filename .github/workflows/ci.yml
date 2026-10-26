@@ -20,14 +20,37 @@ jobs:
     steps:
       - name: Check out the repository
         uses: actions/checkout@v7
+        with:
+          # Full history: the change-impact check diffs the backlog against a base commit,
+          # which a shallow clone does not have.
+          fetch-depth: 0
 
       - name: Set up Node
         uses: actions/setup-node@v7
         with:
           node-version: '22'
 
+      # Also checks traceability in both directions: a criterion naming a test that does
+      # not exist, and a test labelled with an identifier no criterion claims.
       - name: Every criterion declares a basis, a measure and a verification reference
         run: node tools/check-criteria.mjs
+
+      # IEC 62304 clause 7.3.3 in miniature: a change upstream forces review downstream.
+      # Rewording a criterion without revisiting its test is how living documentation
+      # quietly stops being true, so the build asks for an explicit acknowledgement.
+      - name: Criterion changes were reviewed against their tests
+        run: |
+          base="${{ github.event_name == 'pull_request'
+                    && github.event.pull_request.base.sha
+                    || github.event.before }}"
+
+          # Absent on the first push to a branch, and unresolvable after a force push.
+          if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ]; then
+            echo "::notice::no base commit for this event, skipping change-impact analysis"
+            node tools/check-criteria.mjs
+          else
+            node tools/check-criteria.mjs --changed-since "$base"
+          fi
 
       # A gate that has never been seen to fail is not yet known to be a gate. These two
       # steps are the qualification suite: one fixture breaks every rule once, the other
@@ -48,6 +71,24 @@ jobs:
             exit 1
           fi
           echo "confirmed: the checker accepts correctly written criteria"
+
+      # Traceability cannot be fixture-tested the same way, because it reads the real test
+      # sources rather than the file under test. So prove it with a real orphan: plant a
+      # test identifier no criterion claims, require the build to go red, then remove it.
+      - name: The checker rejects a test identifier no criterion claims
+        run: |
+          probe=tools/.traceability-probe.mjs
+          printf '// Planted by CI to prove the traceability check fails. T-PROBE-999\n' > "$probe"
+          if node tools/check-criteria.mjs; then
+            rm -f "$probe"
+            echo "::error::the checker accepted an orphan test identifier"
+            exit 1
+          fi
+          rm -f "$probe"
+          echo "confirmed: the checker rejects a test nothing asked for"
+
+          # And passes again once it is gone, so the step above failed for the right reason.
+          node tools/check-criteria.mjs > /dev/null
 
   api:
     name: API build and tests

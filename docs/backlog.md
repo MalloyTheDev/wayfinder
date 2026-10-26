@@ -52,8 +52,8 @@ bare list was not a finished story.
 | --- | --- | --- | --- | --- |
 | AC-01.1 | The landing page exposes a link to the destination list | the primary navigation contains a link to the destination list, and following it succeeds | categorical | Pending M2 |
 | AC-01.2 | The list returns a fixed-size ranked set to an anonymous visitor | exactly 5 destinations returned against the seeded dataset | invariant | Pending M2 |
-| AC-01.3 | Each entry carries enough detail to choose between options | 4 required fields present and non-empty: name, vacation type, region, summary | invariant | T-DATA-001 |
-| AC-01.4 | Summary text is bounded so layout cannot be broken by content | summary length between 1 and 140 characters inclusive | provisional | T-DATA-002 |
+| AC-01.3 | Each entry carries enough detail to choose between options | 4 required fields present and non-empty: name, vacation type, region, summary | invariant | T-DATA-001, T-DOM-001, T-API-001 |
+| AC-01.4 | Summary text is bounded so layout cannot be broken by content | summary length between 1 and 140 characters inclusive | provisional | T-DATA-002, T-DOM-002 |
 | AC-01.5 | The list is fast enough to feel immediate | p95 latency 300 ms or less at 50 concurrent requests | provisional | Pending M6 |
 | AC-01.6 | Ranking is reproducible | 100 consecutive calls with identical inputs produce 1 distinct ordering | invariant | Pending M2 |
 
@@ -100,6 +100,7 @@ the invariant that makes the definition's exact value stop mattering.
 | AC-03.7 | Personalization does not cost noticeable speed | p95 latency 400 ms or less at 50 concurrent requests | provisional | Pending M6 |
 | AC-03.8 | Personalized ranking beats showing the catalog unranked | mean NDCG@10 of 0.9469 against 0.2449 for catalog order, measured against the labels in [judgments.csv](../api/src/test/resources/eval/judgments.csv), and higher for every persona individually | measured | T-EVAL-001 |
 | AC-03.9 | Ranking quality does not regress | mean NDCG@10 at or above 0.94, the measured value rounded down, against [judgments.csv](../api/src/test/resources/eval/judgments.csv) | measured | T-EVAL-002 |
+| AC-03.10 | A score stays inside its declared range and the ranking is sorted by it | every score within 0.0 to 1.0, and 0 pairs out of order | invariant | T-RANK-006 |
 
 ---
 
@@ -159,6 +160,25 @@ Tracking: https://github.com/MalloyTheDev/wayfinder/issues/1
 
 ---
 
+## US-07 Destination detail (derived)
+
+**As a** traveller who has found something promising, **I want** to open one destination
+on its own, **so that** I can read about it without losing the list.
+
+Origin: **derived**, not from the focus group. The catalog needed a way to address a single
+destination and milestone 1 built one, so this requirement came out of the implementation
+rather than out of a stakeholder. DO-178C calls that a derived requirement and insists it
+be declared and justified rather than presented as something a user asked for. Recorded
+here so the backlog does not quietly imply the focus group asked for it.
+
+| ID | Acceptance criterion | Measure | Basis | Verified by |
+| --- | --- | --- | --- | --- |
+| AC-07.1 | A known identifier returns that destination and nothing else | exactly 1 destination returned, and 0 results for an unknown identifier | invariant | T-CAT-003, T-API-002 |
+| AC-07.2 | An unknown identifier is answered, not merely refused | 0 responses to an unknown identifier carrying a status other than 404, and the identifier echoed in the problem body | invariant | T-API-003 |
+| AC-07.3 | An error response tells a client what is wrong and an attacker nothing | 0 stack frames, internal package names or framework type names in the body | invariant | T-API-004 |
+
+---
+
 ## Non-functional criteria
 
 These apply across every story. They exist because the retrospective's first conclusion
@@ -178,3 +198,6 @@ limits, generalized beyond any single story.
 | AC-00.6 | The domain stays independent of the framework and the database | 0 dependencies from the domain package onto Spring, JPA, Jackson, Flyway or SQL | invariant | T-ARCH-001 |
 | AC-00.7 | The service starts fast enough that a blue-green cutover is not a visible outage | median startup 4.22 s in a 512 MB single-CPU container, down from 9.10 s without the AOT cache, a 53.6% reduction, method and figures in [deployment.md](deployment.md) | measured | Pending M6 |
 | AC-00.8 | A bad migration never reaches a running instance | migrations run in 1 release step that exits non-zero on failure, verified locally to exit 1 against an unreachable database, see [deployment.md](deployment.md) | measured | Pending M6 |
+| AC-00.9 | Catalog reads come back in one stable total order | 1 distinct ordering across 25 identical calls, ordered by a unique key so the result cannot depend on the query plan | invariant | T-CAT-001, T-CAT-002 |
+| AC-00.10 | Layers depend only inward, and storage types stay behind the port | 0 dependencies from the domain onto outer layers, 0 from web onto persistence, 0 entity types referenced outside persistence | invariant | T-ARCH-002, T-ARCH-003, T-ARCH-004 |
+| AC-00.11 | Dependencies are constructor-injected, so a class can be built in a plain test | 0 fields annotated for injection | invariant | T-ARCH-005 |
