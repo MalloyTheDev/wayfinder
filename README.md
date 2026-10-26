@@ -18,11 +18,27 @@ ranked low" without defining either term. No story set a limit on page load time
 long a caption could run. Criteria like that read fine, pass review, get built, and then
 produce an argument during testing.
 
-Wayfinder is that conclusion applied rather than merely recorded. Every criterion in
-[the backlog](docs/backlog.md) states a threshold containing a concrete number, and names
-either the test that checks it or the milestone that will supply one. A build-time gate
-enforces it, so an unfalsifiable criterion cannot be added. The original wording, "ranked
-low", is the fixture that proves the gate fails when it should.
+Wayfinder is that conclusion applied, with one correction the conclusion itself did not
+make: **the strongest criteria are not thresholds.** They are invariants, relational
+properties that hold for any parameterization.
+
+"Match score below 0.25" is a number somebody chose. "No destination below the cutoff
+outranks one at or above it, **for any cutoff**" cannot be satisfied by choosing a
+convenient number, which is the single strongest objection to quantified requirements.
+Twenty-four of this backlog's thirty-six criteria are invariants, and that ratio is the
+design rather than an accident.
+
+Where a number genuinely is the honest form, [the backlog](docs/backlog.md) declares where
+it came from: `measured`, `sourced`, or `provisional`. **Nine thresholds are provisional**,
+meaning chosen by judgment and not yet calibrated, and **none are measured.** The gate
+prints that on every run, because a number nobody has checked should not get to sit
+alongside ones that were.
+
+These are [architectural fitness functions](https://www.thoughtworks.com/radar/techniques/architectural-fitness-function),
+and none of it is new. It is Tom Gilb's SCALE and METER, INCOSE's requirement-quality
+rules, and the bidirectional traceability DO-178C has mandated for decades.
+[Prior art](docs/prior-art.md) records what this borrows, from whom, what OpenFastTrace
+already does better, and what is still missing here.
 
 Originating coursework and artifacts:
 [CS250-SNHU-Travel-Scrum-Pilot](https://github.com/MalloyTheDev/CS250-SNHU-Travel-Scrum-Pilot).
@@ -44,17 +60,20 @@ nothing is deployed yet, and this README will not pretend otherwise.
 | M6 | Traceability report, observability, budgets enforced as gates | Planned |
 | M7 | Demo data, documentation, release | Planned |
 
-33 acceptance criteria are defined. 4 are verified today; the rest name the milestone that
-will verify them. The gate prints that ratio on every run, so verification debt is visible
-rather than discovered later.
+36 acceptance criteria are defined: 24 invariants, 9 provisional thresholds, 3 categorical.
+5 are verified today; the rest name the milestone that will verify them. The gate prints
+both ratios on every run, so verification debt and uncalibrated numbers are visible rather
+than discovered later.
 
 ## What is here now
 
 ```
-docs/backlog.md                 33 criteria, each with a measure and a verification reference
+docs/backlog.md                 36 criteria, each declaring a basis and a verification reference
+docs/prior-art.md               what this borrows, from whom, and what is still missing
 docs/adr/0001-stack-selection.md            Spring Boot, Postgres, React, and why
-docs/adr/0002-measurable-acceptance-criteria.md  the rule, and why it is enforced in CI
+docs/adr/0002-measurable-acceptance-criteria.md  the rule, why it is enforced, and how it was wrong
 tools/check-criteria.mjs        the gate, T-CRIT-001, no dependencies
+tools/fixtures/                 the gate's own qualification suite, one case per rule
 
 api/src/main/java/.../domain/          Destination and its invariants, free of Spring and JPA
 api/src/main/java/.../persistence/     the JPA adapter behind the domain's catalog port
@@ -71,15 +90,21 @@ Requires Node 22 or newer. Nothing to install.
 node tools/check-criteria.mjs
 ```
 
-It prints the criteria count, how many are verified against how many are pending, and the
-milestone each pending one is waiting on. It exits non-zero when a criterion has no
-numeric measure, no verification reference, a duplicate or mismatched identifier, or sits
-under a story that never says where the requirement came from.
+It prints the criteria count, the breakdown by basis, how many are verified against how
+many are pending, and the milestone each pending one is waiting on. It exits non-zero when
+a criterion declares no recognised basis, states a measure inconsistent with that basis,
+claims a measured or sourced figure without citing it, has no verification reference, has
+a duplicate or mismatched identifier, promises an issue it does not link, or sits under a
+story that never says where the requirement came from.
 
-To watch it reject something, point it at a file that breaks the rule:
+The gate has its own qualification suite, because a gate nobody has watched fail is not
+yet known to be a gate. One fixture breaks every rule once; the other uses every rule
+correctly. CI asserts the first is rejected and the second accepted, since a checker that
+refused everything would pass the first test while being useless.
 
 ```bash
-node tools/check-criteria.mjs path/to/broken.md
+node tools/check-criteria.mjs tools/fixtures/invalid-unfalsifiable.md   # must fail
+node tools/check-criteria.mjs tools/fixtures/valid-control.md           # must pass
 ```
 
 ## Running the API

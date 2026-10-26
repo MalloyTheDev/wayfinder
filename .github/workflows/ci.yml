@@ -23,30 +23,28 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Every criterion has a measure and a verification reference
+      - name: Every criterion declares a basis, a measure and a verification reference
         run: node tools/check-criteria.mjs
 
-      - name: The checker rejects a backlog that breaks the rule
+      # A gate that has never been seen to fail is not yet known to be a gate. These two
+      # steps are the qualification suite: one fixture breaks every rule once, the other
+      # uses every rule correctly. Both directions matter, because a checker that rejected
+      # everything would pass the first step while being useless.
+      - name: The checker rejects a backlog that breaks the rules
         run: |
-          # A gate that has never been seen to fail is not yet known to be a gate.
-          # This fixture seeds the exact fault the original project shipped, a criterion
-          # reading "ranked low" with nothing to falsify it.
-          fixture="$(mktemp -d)/broken.md"
-          cat > "$fixture" <<'FIXTURE'
-          ## US-01 Deliberately broken fixture
-
-          Origin: a fixture used to prove the checker fails when it should.
-
-          | ID | Acceptance criterion | Measure | Verified by |
-          | --- | --- | --- | --- |
-          | AC-01.1 | Unlikely destinations are ranked low | ranked low | Pending M2 |
-          FIXTURE
-
-          if node tools/check-criteria.mjs "$fixture"; then
-            echo "::error::the checker passed a backlog it should have rejected"
+          if node tools/check-criteria.mjs tools/fixtures/invalid-unfalsifiable.md; then
+            echo "::error::the checker accepted a backlog it should have rejected"
             exit 1
           fi
-          echo "confirmed: the checker rejects an unfalsifiable criterion"
+          echo "confirmed: the checker rejects unfalsifiable criteria"
+
+      - name: The checker accepts a backlog that follows them
+        run: |
+          if ! node tools/check-criteria.mjs tools/fixtures/valid-control.md; then
+            echo "::error::the checker rejected a backlog that follows every rule"
+            exit 1
+          fi
+          echo "confirmed: the checker accepts correctly written criteria"
 
   api:
     name: API build and tests

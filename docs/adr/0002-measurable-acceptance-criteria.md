@@ -1,8 +1,39 @@
 # ADR-0002: Acceptance criteria carry measures and gate the release
 
-- Status: Accepted
+- Status: Accepted, amended 2026-10-26
 - Date: 2026-10-25
 - Supersedes: nothing
+
+## Amendment, 2026-10-26
+
+The original decision required that **every** acceptance criterion carry a number. That
+was wrong in two distinct ways, and the amended rule is narrower and stronger.
+
+**Not every claim should be a number.** Google's SRE guidance warns that too many
+indicators makes it impossible to attend to the ones that matter. Some properties are true
+or false, and restating "the response names the accepted values" as "0 responses omitting
+the accepted values out of 1000" is worse writing pretending to be better engineering. A
+`categorical` basis now exists for those, and the checker rejects a categorical criterion
+that smuggles a number back in.
+
+**A number is not evidence.** A regular expression that demands a digit cannot distinguish
+a threshold calibrated against data from one that was invented and sounded about right.
+The original rule converted "is this falsifiable?" into "does this string contain a
+numeral?", which is a weaker question wearing the costume of a stronger one. Every
+criterion now declares a `Basis`, and the checker publishes how many thresholds are
+`provisional`, meaning chosen by judgment and not yet calibrated. At the time of this
+amendment that number is nine, and none are `measured`.
+
+**Invariants were undervalued.** A relational property that holds for any parameterization,
+such as "no destination below the cutoff outranks one at or above it, for any cutoff",
+cannot be satisfied by choosing a convenient number. It is strictly stronger than a
+threshold and immune to the criticism above. These are now a first-class basis, and where
+a requirement can be expressed as one, it is. Twenty-four of thirty-six criteria are.
+
+See [prior art](../prior-art.md) for what this borrows and from whom. The short version:
+this is Tom Gilb's SCALE and METER, INCOSE's requirement-quality rules, and the
+bidirectional traceability DO-178C has mandated for decades, and OpenFastTrace already
+implements more of it than this repository does.
 
 ## Context
 
@@ -27,12 +58,17 @@ poor way to start.
 
 ## Decision
 
-Every acceptance criterion in `docs/backlog.md` carries two mandatory columns.
+Every acceptance criterion in `docs/backlog.md` carries three mandatory columns.
 
-**Measure** states a threshold containing a concrete number. Not "fast", but "p95 latency
-300 ms or less at 50 concurrent requests". Not "ranked low", but "match score below 0.25
-on a 0.0 to 1.0 scale". Where a criterion is an invariant rather than a budget, the number
-is a count: zero inversions, exactly five results, one distinct ordering per hundred calls.
+**Basis** declares what kind of claim the criterion makes, and for numbers, where the
+number came from: `measured`, `sourced`, `provisional`, `invariant` or `categorical`. The
+full definitions are in the backlog. `measured` and `sourced` must cite their figure, or
+they are `provisional` wearing a better word.
+
+**Measure** states how the criterion can be falsified. Not "fast", but "p95 latency 300 ms
+or less at 50 concurrent requests". Not "ranked low", but "0 inversions where a
+destination below the cutoff ranks above one at or above it, for any cutoff". A numeric
+basis must carry a number; a `categorical` one must not.
 
 **Verified by** names the automated test that checks it, or `Pending M<n>` naming the
 milestone that will supply that test. A criterion may be unimplemented. It may not be

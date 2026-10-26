@@ -33,6 +33,25 @@ const DISPLAY = relative(REPO_ROOT, BACKLOG).split('\\').join('/') || BACKLOG;
 
 const ID_PATTERN = /^AC-(\d{2})\.\d+$/;
 const VERIFIED_PATTERN = /^(Pending M\d+|T-[A-Z0-9]+-\d+)$/;
+
+/**
+ * What kind of claim a criterion makes, and for numbers, where the number came from.
+ *
+ * `requiresNumber` is false for exactly one basis. Mandating a number everywhere was the
+ * original design, and it was wrong: some properties are true or false, and dressing one
+ * up as "0 malformed rows out of 1000" is worse than saying it parses. ADR-0002 records
+ * why that changed.
+ */
+const BASIS = {
+  measured:    { requiresNumber: true,  requiresCitation: true,  calibrated: true },
+  sourced:     { requiresNumber: true,  requiresCitation: true,  calibrated: true },
+  provisional: { requiresNumber: true,  requiresCitation: false, calibrated: false },
+  invariant:   { requiresNumber: true,  requiresCitation: false, calibrated: true },
+  categorical: { requiresNumber: false, requiresCitation: false, calibrated: true },
+};
+
+/** A citation is a markdown link or a bare URL somewhere in the row. */
+const CITATION_PATTERN = /\[[^\]]+\]\([^)]+\)|https?:\/\/\S+/;
 // Markdown permits up to three spaces of indentation before a heading, and a backlog
 // excerpt embedded in a YAML block can arrive indented, so do not anchor hard at column 0.
 const HEADING_PATTERN = /^\s{0,3}##\s+(.+?)\s*$/;
@@ -84,9 +103,9 @@ function parse(text) {
     }
 
     if (line.trimStart().startsWith('| AC-')) {
-      const [id, criterion, measure, verified] = cells(line);
+      const [id, criterion, measure, basis, verified] = cells(line);
       current.criteria.push({
-        id, criterion, measure, verified,
+        id, criterion, measure, basis, verified,
         line: index + 1,
         section: current,
       });
@@ -140,13 +159,39 @@ function check(sections) {
       problems.push({ line: c.line, id: c.id, message: 'criterion text is empty' });
     }
 
-    // The whole point of ADR-0002: a criterion without a number cannot be falsified.
-    if (!c.measure) {
-      problems.push({ line: c.line, id: c.id, message: 'measure is empty' });
-    } else if (!/\d/.test(c.measure)) {
+    const basis = BASIS[c.basis ?? ''];
+
+    if (!basis) {
       problems.push({
         line: c.line, id: c.id,
-        message: `measure states no number, so nothing can falsify it: "${c.measure}"`,
+        message: `basis must be one of ${Object.keys(BASIS).join(', ')}, found "${c.basis ?? ''}"`,
+      });
+    }
+
+    if (!c.measure) {
+      problems.push({ line: c.line, id: c.id, message: 'measure is empty' });
+    } else if (basis?.requiresNumber && !/\d/.test(c.measure)) {
+      // The core of ADR-0002, now scoped: a criterion that claims to be numeric must
+      // actually carry a number. A categorical one is exempt by declaration, not by
+      // oversight, which is the difference between a considered exception and a hole.
+      problems.push({
+        line: c.line, id: c.id,
+        message: `basis "${c.basis}" promises a number but the measure has none: "${c.measure}"`,
+      });
+    } else if (basis && !basis.requiresNumber && /\d/.test(c.measure)) {
+      problems.push({
+        line: c.line, id: c.id,
+        message: `basis "categorical" means the claim is true or false, but the measure `
+          + `states a number. Use a numeric basis, or drop the number: "${c.measure}"`,
+      });
+    }
+
+    // A threshold said to come from measurement or an external standard has to show its
+    // working. Without this, "measured" is just a more confident way of saying "invented".
+    if (basis?.requiresCitation && !CITATION_PATTERN.test(`${c.criterion} ${c.measure}`)) {
+      problems.push({
+        line: c.line, id: c.id,
+        message: `basis "${c.basis}" claims the figure has a source, but the row cites none`,
       });
     }
 
@@ -177,6 +222,17 @@ function report(all) {
   console.log(`verified:  ${verified.length}`);
   console.log(`pending:   ${pending.length}`);
 
+  // Printed on every run because it is the number most worth being embarrassed by. A
+  // provisional threshold is a number someone chose and nobody has checked against
+  // reality yet; publishing the count is what stops it quietly becoming settled fact.
+  console.log('');
+  console.log('basis:');
+  for (const name of Object.keys(BASIS)) {
+    const n = all.filter((c) => c.basis === name).length;
+    const note = name === 'provisional' ? '  <- chosen by judgment, not yet calibrated' : '';
+    console.log(`  ${name.padEnd(12)} ${String(n).padStart(3)}${note}`);
+  }
+
   const byMilestone = new Map();
   for (const c of pending) {
     const m = c.verified.replace('Pending ', '');
@@ -185,8 +241,12 @@ function report(all) {
   const order = [...byMilestone.keys()].sort(
     (a, b) => Number(a.slice(1)) - Number(b.slice(1)),
   );
-  for (const m of order) {
-    console.log(`  ${m}: ${byMilestone.get(m)} awaiting a test`);
+  if (order.length > 0) {
+    console.log('');
+    console.log('awaiting a test:');
+    for (const m of order) {
+      console.log(`  ${m.padEnd(12)} ${String(byMilestone.get(m)).padStart(3)}`);
+    }
   }
 }
 
@@ -218,7 +278,8 @@ async function main() {
     process.exit(1);
   }
 
-  console.log('\nT-CRIT-001 passed: every criterion has a numeric measure and a verification reference.');
+  console.log('\nT-CRIT-001 passed: every criterion declares a basis, a measure consistent '
+    + 'with it, and a verification reference.');
 }
 
 await main();
