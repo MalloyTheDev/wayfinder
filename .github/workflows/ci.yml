@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Milestone 0 ships one job, because one job is all there is real work for. The API and
+# client build jobs arrive in M1 and M2 alongside the code they would build. A pipeline
+# with jobs that pass because they do nothing is worse than a short pipeline.
+jobs:
+  criteria:
+    name: Acceptance criteria (T-CRIT-001)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Every criterion has a measure and a verification reference
+        run: node tools/check-criteria.mjs
+
+      - name: The checker rejects a backlog that breaks the rule
+        run: |
+          # A gate that has never been seen to fail is not yet known to be a gate.
+          # This fixture seeds the exact fault the original project shipped, a criterion
+          # reading "ranked low" with nothing to falsify it.
+          fixture="$(mktemp -d)/broken.md"
+          cat > "$fixture" <<'FIXTURE'
+          ## US-01 Deliberately broken fixture
+
+          Origin: a fixture used to prove the checker fails when it should.
+
+          | ID | Acceptance criterion | Measure | Verified by |
+          | --- | --- | --- | --- |
+          | AC-01.1 | Unlikely destinations are ranked low | ranked low | Pending M2 |
+          FIXTURE
+
+          if node tools/check-criteria.mjs "$fixture"; then
+            echo "::error::the checker passed a backlog it should have rejected"
+            exit 1
+          fi
+          echo "confirmed: the checker rejects an unfalsifiable criterion"

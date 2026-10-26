@@ -1,0 +1,25 @@
+# Store and check out text with LF everywhere, so the same source produces identical
+# bytes on Windows, macOS and the Linux CI runners.
+* text=auto eol=lf
+
+# Scripts must keep LF regardless of platform or they will not execute on the runner.
+*.sh        text eol=lf
+*.mjs       text eol=lf
+
+# Windows-only scripts need CRLF.
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+
+# Binary assets are never line-ending normalized and never diffed as text.
+*.jpg   binary
+*.jpeg  binary
+*.png   binary
+*.gif   binary
+*.webp  binary
+*.ico   binary
+*.pdf   binary
+*.jar   binary
+*.zip   binary
+
+# Generated lockfiles are reviewed as a whole, not line by line.
+package-lock.json   linguist-generated

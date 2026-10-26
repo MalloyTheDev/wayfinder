@@ -1,0 +1,13 @@
+version: 2
+
+# npm and Maven ecosystems are added in M1 and M2, when there is a manifest for them to
+# read. Declaring them against a directory with no manifest only produces update errors.
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: Update
+    labels:
+      - dependencies
