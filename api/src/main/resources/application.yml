@@ -1,0 +1,43 @@
+spring:
+  application:
+    name: wayfinder-api
+
+  datasource:
+    # No credentials in the repository. The defaults point at a local development database
+    # and are overridden by environment variables everywhere else.
+    url: ${WAYFINDER_DB_URL:jdbc:postgresql://localhost:5432/wayfinder}
+    username: ${WAYFINDER_DB_USER:wayfinder}
+    password: ${WAYFINDER_DB_PASSWORD:wayfinder}
+
+  jpa:
+    hibernate:
+      # Flyway owns the schema. Letting Hibernate generate it would mean production and
+      # tests run against a schema nobody reviewed, and would silently drop the CHECK
+      # constraints that enforce AC-01.3 and AC-01.4.
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # Health only. Every additional endpoint is surface area, and nothing yet needs more.
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+server:
+  error:
+    # Error responses are built by ApiExceptionHandler. Never leak a stack trace.
+    include-stacktrace: never
+    include-message: never

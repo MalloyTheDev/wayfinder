@@ -7,9 +7,8 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Milestone 0 ships one job, because one job is all there is real work for. The API and
-# client build jobs arrive in M1 and M2 alongside the code they would build. A pipeline
-# with jobs that pass because they do nothing is worse than a short pipeline.
+# Each job does real work. The client build job arrives in M2 alongside the client; a
+# pipeline with jobs that pass because they do nothing is worse than a short pipeline.
 jobs:
   criteria:
     name: Acceptance criteria (T-CRIT-001)
@@ -48,3 +47,37 @@ jobs:
             exit 1
           fi
           echo "confirmed: the checker rejects an unfalsifiable criterion"
+
+  api:
+    name: API build and tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      # Persistence tests run against real Postgres through Testcontainers, which needs a
+      # Docker daemon. The ubuntu runner has one, so no setup step is required; this check
+      # exists so that an absent daemon fails here with a clear message rather than as a
+      # wall of connection errors inside the test report.
+      - name: Confirm a Docker daemon is available
+        run: docker info --format 'docker {{.ServerVersion}}'
+
+      - name: Build and test
+        working-directory: api
+        run: ./mvnw -B --no-transfer-progress verify
+
+      - name: Upload test reports when something fails
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: surefire-reports
+          path: api/target/surefire-reports/
+          if-no-files-found: ignore

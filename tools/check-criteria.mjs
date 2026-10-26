@@ -39,6 +39,11 @@ const HEADING_PATTERN = /^\s{0,3}##\s+(.+?)\s*$/;
 const STORY_NUMBER_PATTERN = /^US-(\d+)/;
 const ORIGIN_PATTERN = /^Origin:\s*\S/;
 
+// A section may declare where its open question is being tracked. Criteria that promise an
+// issue exists are checked against this rather than taken on trust, so the disclosure
+// cannot be quietly deleted while the criterion still claims to be satisfied.
+const TRACKING_PATTERN = /^Tracking:\s*(https?:\/\/\S+)\s*$/;
+
 /** Split a Markdown table row into trimmed cells, dropping the empty edges. */
 function cells(line) {
   const parts = line.split('|');
@@ -59,7 +64,9 @@ function parse(text) {
   text.split(/\r?\n/).forEach((line, index) => {
     const heading = HEADING_PATTERN.exec(line);
     if (heading) {
-      current = { title: heading[1], line: index + 1, hasOrigin: false, criteria: [] };
+      current = {
+        title: heading[1], line: index + 1, hasOrigin: false, tracking: null, criteria: [],
+      };
       sections.push(current);
       return;
     }
@@ -67,6 +74,12 @@ function parse(text) {
 
     if (ORIGIN_PATTERN.test(line.trim())) {
       current.hasOrigin = true;
+      return;
+    }
+
+    const tracking = TRACKING_PATTERN.exec(line.trim());
+    if (tracking) {
+      current.tracking = tracking[1];
       return;
     }
 
@@ -134,6 +147,14 @@ function check(sections) {
       problems.push({
         line: c.line, id: c.id,
         message: `measure states no number, so nothing can falsify it: "${c.measure}"`,
+      });
+    }
+
+    // A criterion that asserts an issue exists has to point at one.
+    if (/\bissues?\b/i.test(c.measure ?? '') && !c.section.tracking) {
+      problems.push({
+        line: c.line, id: c.id,
+        message: 'measure promises an issue, but the section has no "Tracking: <url>" line',
       });
     }
 

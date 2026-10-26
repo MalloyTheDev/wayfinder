@@ -29,8 +29,8 @@ bare list was not a finished story.
 | --- | --- | --- | --- |
 | AC-01.1 | The landing page exposes a link to the destination list | 1 link present within the page's primary navigation landmark, resolving to HTTP 200 | Pending M2 |
 | AC-01.2 | The list returns a fixed-size ranked set to an anonymous visitor | exactly 5 destinations returned against the seeded dataset | Pending M2 |
-| AC-01.3 | Each entry carries enough detail to choose between options | 4 required fields present and non-empty: name, vacation type, region, summary | Pending M2 |
-| AC-01.4 | Summary text is bounded so layout cannot be broken by content | summary length between 1 and 140 characters inclusive | Pending M2 |
+| AC-01.3 | Each entry carries enough detail to choose between options | 4 required fields present and non-empty: name, vacation type, region, summary | T-DATA-001 |
+| AC-01.4 | Summary text is bounded so layout cannot be broken by content | summary length between 1 and 140 characters inclusive | T-DATA-002 |
 | AC-01.5 | The list is fast enough to feel immediate | p95 latency 300 ms or less at 50 concurrent requests | Pending M6 |
 | AC-01.6 | Ranking is reproducible | 100 consecutive calls with identical inputs produce 1 distinct ordering | Pending M2 |
 
@@ -123,9 +123,11 @@ that was always the number.
 Origin: SNHU Travel backlog, which the source documents state held six items. The sixth
 is not recoverable from the sprint review, the presentation or the module six journal.
 
+Tracking: https://github.com/MalloyTheDev/wayfinder/issues/1
+
 | ID | Acceptance criterion | Measure | Verified by |
 | --- | --- | --- | --- |
-| AC-06.1 | The gap is disclosed rather than silently dropped | 1 open issue tracking recovery of the sixth item | Pending M1 |
+| AC-06.1 | The gap is disclosed rather than silently dropped | 1 issue tracked against this section, linked above | T-CRIT-001 |
 
 ---
 

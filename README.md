@@ -29,22 +29,22 @@ Originating coursework and artifacts:
 
 ## Status
 
-**Milestone 0.** There is no application code yet, and this README will not pretend
-otherwise. What exists is the backlog, the architectural decisions, and the gate that
-keeps the backlog honest.
+**Milestone 1.** The catalog is real: a domain model, a migrated schema, 30 seeded
+destinations and a read API over them, tested against Postgres. Nothing is ranked yet and
+nothing is deployed yet, and this README will not pretend otherwise.
 
 | Milestone | Delivers | State |
 | --- | --- | --- |
 | M0 | Backlog with measurable criteria, ADRs, criteria gate | Done |
-| M1 | Domain model, migrations, seeded reference dataset, destinations API | Next |
-| M2 | Ranked top five and landing page, US-01 end to end, deployed | Planned |
+| M1 | Domain model, migrations, seeded reference dataset, destinations API | Done |
+| M2 | Ranked top five and landing page, US-01 end to end, deployed | Next |
 | M3 | Accounts and preference persistence, US-02 | Planned |
 | M4 | Personalized ranking and type filters, US-03 and US-04 | Planned |
 | M5 | Hot deals, US-05 | Planned |
 | M6 | Traceability report, observability, budgets enforced as gates | Planned |
 | M7 | Demo data, documentation, release | Planned |
 
-33 acceptance criteria are defined. 1 is verified today; the rest name the milestone that
+33 acceptance criteria are defined. 4 are verified today; the rest name the milestone that
 will verify them. The gate prints that ratio on every run, so verification debt is visible
 rather than discovered later.
 
@@ -55,6 +55,12 @@ docs/backlog.md                 33 criteria, each with a measure and a verificat
 docs/adr/0001-stack-selection.md            Spring Boot, Postgres, React, and why
 docs/adr/0002-measurable-acceptance-criteria.md  the rule, and why it is enforced in CI
 tools/check-criteria.mjs        the gate, T-CRIT-001, no dependencies
+
+api/src/main/java/.../domain/          Destination and its invariants, free of Spring and JPA
+api/src/main/java/.../persistence/     the JPA adapter behind the domain's catalog port
+api/src/main/java/.../web/             the read API and its problem responses
+api/src/main/resources/db/migration/   schema, then 30 seeded reference destinations
+api/src/test/                          53 tests, the database ones against real Postgres
 ```
 
 ## Running the gate
@@ -76,15 +82,46 @@ To watch it reject something, point it at a file that breaks the rule:
 node tools/check-criteria.mjs path/to/broken.md
 ```
 
-## Planned architecture
+## Running the API
 
-Spring Boot 3 on Java 21 behind a React and TypeScript client, over PostgreSQL with Flyway
-migrations. Ranking logic sits in a package that depends on neither Spring nor the
-database, so the ordering invariants in US-03 can be tested directly. Persistence tests
-run against real Postgres through Testcontainers rather than an embedded substitute.
+Requires JDK 25 and a running Docker daemon. Maven arrives through the pinned wrapper, so
+there is nothing to install.
 
-The reasoning, including the alternatives that were rejected, is in
-[ADR-0001](docs/adr/0001-stack-selection.md).
+```bash
+cd api
+./mvnw verify
+```
+
+That runs all 53 tests. The database ones start a real Postgres container, apply both
+migrations and assert against the result, because ADR-0001 rejected an embedded substitute
+for exactly the CHECK-constraint and ordering behaviour these tests depend on.
+
+To run the service against a local database:
+
+```bash
+docker run -d --name wayfinder-db -e POSTGRES_DB=wayfinder \
+  -e POSTGRES_USER=wayfinder -e POSTGRES_PASSWORD=wayfinder -p 5432:5432 postgres:17-alpine
+cd api && ./mvnw spring-boot:run
+```
+
+Then `GET /api/destinations` returns all 30 ordered by slug,
+`GET /api/destinations/{slug}` returns one, and an unknown slug returns an RFC 9457
+problem response. Health is at `/actuator/health`.
+
+## Architecture
+
+Spring Boot 4 on Java 25 over PostgreSQL with Flyway migrations, with a React and
+TypeScript client arriving in M2.
+
+The domain package depends on neither Spring nor JPA. `Destination` is a record whose
+constructor enforces the invariants, so an invalid one cannot be built whatever route the
+data arrived by, and the ranking that M4 adds can be tested without starting a framework
+or a database. Persistence sits behind a port the domain declares. The same invariants are
+enforced a second time as CHECK constraints in the migration, so a row that bypassed the
+application still cannot exist.
+
+The reasoning, including the alternatives that were rejected and an amendment correcting
+the framework and Java versions, is in [ADR-0001](docs/adr/0001-stack-selection.md).
 
 ## A known gap
 

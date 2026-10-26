@@ -1,8 +1,21 @@
 # ADR-0001: Spring Boot API with a React client over Postgres
 
-- Status: Accepted
+- Status: Accepted, amended 2026-10-26
 - Date: 2026-10-25
 - Supersedes: nothing
+
+## Amendment, 2026-10-26
+
+Written against Spring Boot 3 and Java 21 before either was checked against what is
+actually current. Both were out of date on the day they were written.
+
+Spring Boot 4.1.2 is the current stable release; the 3.x line is no longer where new work
+starts. Java 25 is the current LTS, superseding 21, and is the JDK available on the
+development machine. The decision is amended to Spring Boot 4 on Java 25.
+
+The reasoning below is unchanged, because none of it turned on those version numbers.
+Recorded as an amendment rather than a quiet edit, since being able to see that a decision
+was made on stale information is the point of writing it down.
 
 ## Context
 
@@ -30,8 +43,9 @@ rather than looking like an unrelated restart.
 
 ## Decision
 
-**API:** Spring Boot 3 on Java 21 (LTS), layered as domain, service and web, with the
-ranking logic in a package that depends on neither Spring nor the database.
+**API:** Spring Boot 4 on Java 25 (LTS), built by Maven through a pinned wrapper, layered
+as domain, persistence and web, with the domain and ranking logic in packages that depend
+on neither Spring nor the database.
 
 **Persistence:** PostgreSQL, schema managed by Flyway migrations. Chosen over an embedded
 database so that tests exercise the same engine as production.
@@ -58,8 +72,14 @@ A separate client is more moving parts than server-rendered templates. Accepted 
 AC-02.1 through AC-02.3 are user interface criteria concerning labelling, default state
 and confirmation timing, and they are more honestly tested against a real client.
 
-Java 21 rather than the newest release, because LTS is what the deployment targets and CI
+Java 25 rather than the newest release, because LTS is what the deployment targets and CI
 images support without friction.
+
+Maven rather than Gradle, for a reason that is about readers rather than engineering: a
+declarative POM is legible to anyone who has touched a Java project, where a Gradle build
+script is a program that has to be read. For a repository whose purpose includes being
+reviewed by people who did not write it, that matters more than build speed. The wrapper
+is pinned so a local build and a CI build run the same Maven.
 
 ## Alternatives considered
 
