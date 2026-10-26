@@ -1,0 +1,11 @@
+# Evaluation personas. Each is a traveller whose stated preferences drive the ranking.
+#
+# vacation_types and regions are pipe-separated; an empty value means the traveller stated
+# no constraint on that dimension, which the scorer treats as "anything matches" rather
+# than "nothing matches".
+#
+# persona,vacation_types,regions,budget
+budget-wellness,WELLNESS,,BUDGET
+luxury-beach-asia,BEACH,ASIA,LUXURY
+adventure-moderate,ADVENTURE,,MODERATE
+culture-europe,CULTURAL|CITY,EUROPE,MODERATE

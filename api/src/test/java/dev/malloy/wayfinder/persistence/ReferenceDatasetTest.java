@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.malloy.wayfinder.domain.Destination;
+import dev.malloy.wayfinder.support.PostgresTestBase;
 import dev.malloy.wayfinder.domain.Region;
 import dev.malloy.wayfinder.domain.VacationType;
 import java.util.List;

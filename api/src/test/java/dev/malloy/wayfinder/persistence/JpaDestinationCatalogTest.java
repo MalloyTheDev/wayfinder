@@ -3,6 +3,7 @@ package dev.malloy.wayfinder.persistence;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.malloy.wayfinder.domain.Destination;
+import dev.malloy.wayfinder.support.PostgresTestBase;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.IntStream;

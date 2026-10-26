@@ -1,0 +1,82 @@
+# Relevance judgments: how well each destination actually suits each persona.
+#
+# THESE ARE HAND-LABELLED EDITORIAL JUDGMENTS. They are deliberately NOT derived from the
+# scoring formula. If they were, NDCG would be measuring the scorer against its own logic
+# and would report a perfect result no matter how bad the ranking was. Several labels here
+# disagree with what the current weights produce, and those disagreements are the entire
+# source of signal in the metric.
+#
+# Graded 0 to 3:
+#   3  ideal, this is what the traveller is looking for
+#   2  good, they would seriously consider it
+#   1  marginal, right in some respect and wrong in others
+#   0  not suitable
+#
+# A destination absent for a persona is treated as 0.
+#
+# persona,slug,relevance
+
+# budget-wellness: a traveller wanting to disconnect, on a tight budget.
+# Note annapurna-circuit at 2: a budget teahouse trek genuinely serves someone looking to
+# slow down and unplug, even though it is filed under ADVENTURE and the formula cannot see
+# that. Note baden-baden at 0: correct category, but a luxury spa town is not available to
+# this traveller at any level of interest.
+budget-wellness,rishikesh-ashram-stay,3
+budget-wellness,tulum-yoga-sanctuary,2
+budget-wellness,byron-bay-wellness-week,2
+budget-wellness,sedona-desert-reset,2
+budget-wellness,annapurna-circuit,2
+budget-wellness,kyoto-mindfulness-retreat,1
+budget-wellness,hakone-hot-springs,1
+budget-wellness,blue-lagoon-thermal-spa,1
+budget-wellness,marrakech-medina,1
+budget-wellness,baden-baden-thermal-baths,0
+budget-wellness,mexico-city-centro,0
+budget-wellness,maldives-atoll-escape,0
+
+# luxury-beach-asia: high-end coastal escape, Asia preferred.
+# Note hakone-hot-springs at 2: a luxury traveller in Asia after a restful coastal-style
+# escape would plausibly book a high-end onsen ryokan, which the formula scores poorly
+# because the vacation type does not match.
+luxury-beach-asia,maldives-atoll-escape,3
+luxury-beach-asia,hakone-hot-springs,2
+luxury-beach-asia,kyoto-mindfulness-retreat,1
+luxury-beach-asia,borneo-rainforest,1
+luxury-beach-asia,tokyo-neighbourhoods,1
+luxury-beach-asia,zanzibar-spice-coast,1
+luxury-beach-asia,algarve-coast,1
+luxury-beach-asia,gold-coast-surf,1
+luxury-beach-asia,rio-beaches,1
+luxury-beach-asia,serengeti-migration,0
+luxury-beach-asia,rishikesh-ashram-stay,0
+
+# adventure-moderate: active trips, mid budget, anywhere.
+# Note borneo-rainforest and azores-sao-miguel at 2: both are filed under NATURE but are
+# adventure travel in everything but the label.
+adventure-moderate,moab-canyon-country,3
+adventure-moderate,annapurna-circuit,3
+adventure-moderate,patagonia-trek,2
+adventure-moderate,iceland-ring-road,2
+adventure-moderate,queenstown-adrenaline,2
+adventure-moderate,borneo-rainforest,2
+adventure-moderate,azores-sao-miguel,2
+adventure-moderate,banff-lakes,1
+adventure-moderate,serengeti-migration,1
+adventure-moderate,gold-coast-surf,1
+adventure-moderate,lisbon-city-break,0
+adventure-moderate,baden-baden-thermal-baths,0
+
+# culture-europe: history and city life in Europe, mid budget.
+# Note marrakech-medina at 2: a walled old city of souks and riads is squarely this
+# traveller's interest and a short hop from Europe, but it fails the stated region filter.
+culture-europe,andalusia-moorish-trail,3
+culture-europe,lisbon-city-break,3
+culture-europe,marrakech-medina,2
+culture-europe,azores-sao-miguel,1
+culture-europe,peru-sacred-valley,1
+culture-europe,mexico-city-centro,1
+culture-europe,buenos-aires-barrios,1
+culture-europe,cape-town-city-bowl,1
+culture-europe,tokyo-neighbourhoods,1
+culture-europe,blue-lagoon-thermal-spa,0
+culture-europe,baden-baden-thermal-baths,0

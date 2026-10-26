@@ -1,4 +1,4 @@
-package dev.malloy.wayfinder.persistence;
+package dev.malloy.wayfinder.support;
 
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration;
@@ -28,11 +28,11 @@ import org.testcontainers.utility.DockerImageName;
  * the schema is never created, and every query fails on a missing table.
  */
 @ImportAutoConfiguration(FlywayAutoConfiguration.class)
-abstract class PostgresTestBase {
+public abstract class PostgresTestBase {
 
     // Not PostgreSQLContainer<?>: Testcontainers 2.x dropped the self-type generic that
     // the 1.x builder API needed.
-    static final PostgreSQLContainer POSTGRES =
+    protected static final PostgreSQLContainer POSTGRES =
         new PostgreSQLContainer(DockerImageName.parse("postgres:17-alpine"));
 
     static {

@@ -25,14 +25,14 @@ properties that hold for any parameterization.
 "Match score below 0.25" is a number somebody chose. "No destination below the cutoff
 outranks one at or above it, **for any cutoff**" cannot be satisfied by choosing a
 convenient number, which is the single strongest objection to quantified requirements.
-Twenty-four of this backlog's thirty-six criteria are invariants, and that ratio is the
+Twenty-four of this backlog's thirty-eight criteria are invariants, and that ratio is the
 design rather than an accident.
 
 Where a number genuinely is the honest form, [the backlog](docs/backlog.md) declares where
 it came from: `measured`, `sourced`, or `provisional`. **Nine thresholds are provisional**,
-meaning chosen by judgment and not yet calibrated, and **none are measured.** The gate
-prints that on every run, because a number nobody has checked should not get to sit
-alongside ones that were.
+meaning chosen by judgment and not yet calibrated. Two are `measured`, and both come from
+the ranking evaluation below. The gate prints that breakdown on every run, because a
+number nobody has checked should not get to sit alongside ones that were.
 
 These are [architectural fitness functions](https://www.thoughtworks.com/radar/techniques/architectural-fitness-function),
 and none of it is new. It is Tom Gilb's SCALE and METER, INCOSE's requirement-quality
@@ -60,10 +60,39 @@ nothing is deployed yet, and this README will not pretend otherwise.
 | M6 | Traceability report, observability, budgets enforced as gates | Planned |
 | M7 | Demo data, documentation, release | Planned |
 
-36 acceptance criteria are defined: 24 invariants, 9 provisional thresholds, 3 categorical.
-5 are verified today; the rest name the milestone that will verify them. The gate prints
-both ratios on every run, so verification debt and uncalibrated numbers are visible rather
-than discovered later.
+38 acceptance criteria are defined: 24 invariants, 9 provisional thresholds, 3 categorical,
+2 measured. 12 are verified today; the rest name the milestone that will verify them. The
+gate prints both ratios on every run, so verification debt and uncalibrated numbers are
+visible rather than discovered later.
+
+## Ranking quality, measured
+
+The personalized ranking is evaluated against hand-labelled relevance judgments using
+NDCG@10, and the result gates the build. This is the one number in the project that can
+genuinely get worse when the code changes, which is why it exists: an assertion that an
+endpoint returns HTTP 200 cannot regress in a way that means anything.
+
+| Persona | Ranked | Unranked baseline | Gain |
+| --- | --- | --- | --- |
+| budget-wellness | 0.9656 | 0.1908 | +0.7747 |
+| luxury-beach-asia | 0.9483 | 0.1142 | +0.8341 |
+| adventure-moderate | 0.8895 | 0.3323 | +0.5572 |
+| culture-europe | 0.9842 | 0.3423 | +0.6419 |
+| **Mean** | **0.9469** | **0.2449** | **+0.7020** |
+
+The baseline is the catalog in its natural order, which is what the unpersonalized
+endpoint returns today. The build fails if the mean drops below 0.94, or if any single
+persona stops beating its own baseline, because a mean can hide a scorer that is excellent
+for one traveller and worse than useless for another.
+
+**The judgments are editorial, not generated.** Several labels deliberately disagree with
+what the current weights produce: a budget Himalayan trek is labelled relevant to a
+wellness traveller, and a luxury onsen is labelled relevant to someone who asked for
+beaches. Ground truth derived from the formula under test would report a perfect score no
+matter how bad the ranking was, so those disagreements are the entire source of signal.
+They are also why `adventure-moderate` scores lowest: the scorer treats vacation type as
+binary and cannot see that a rainforest river journey is adventure travel in all but
+label.
 
 ## What is here now
 
@@ -79,7 +108,10 @@ api/src/main/java/.../domain/          Destination and its invariants, free of S
 api/src/main/java/.../persistence/     the JPA adapter behind the domain's catalog port
 api/src/main/java/.../web/             the read API and its problem responses
 api/src/main/resources/db/migration/   schema, then 30 seeded reference destinations
-api/src/test/                          58 tests, including ArchUnit rules and real Postgres
+api/src/main/java/.../domain/DestinationScorer.java   the ranking, framework-free and explainable
+api/src/test/resources/eval/           hand-labelled personas and relevance judgments
+api/src/test/java/.../eval/            NDCG and the quality gate
+api/src/test/                          67 tests, including ArchUnit rules and real Postgres
 ```
 
 ## Running the gate
@@ -117,7 +149,7 @@ cd api
 ./mvnw verify
 ```
 
-That runs all 58 tests. The database ones start a real Postgres container, apply both
+That runs all 67 tests. The database ones start a real Postgres container, apply both
 migrations and assert against the result, because ADR-0001 rejected an embedded substitute
 for exactly the CHECK-constraint and ordering behaviour these tests depend on.
 

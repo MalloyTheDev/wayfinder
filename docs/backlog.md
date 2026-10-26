@@ -92,12 +92,14 @@ the invariant that makes the definition's exact value stop mattering.
 | ID | Acceptance criterion | Measure | Basis | Verified by |
 | --- | --- | --- | --- | --- |
 | AC-03.1 | "Unlikely" has a single definition the whole system shares | match score below 0.25 on a 0.0 to 1.0 scale | provisional | Pending M4 |
-| AC-03.2 | Unlikely destinations never outrank suitable ones | 0 inversions where a destination below the cutoff ranks above one at or above it, for any cutoff in 0.0 to 1.0 | invariant | Pending M4 |
-| AC-03.3 | Personalization demonstrably changes the result | at least 2 seeded personas receive orderings differing by 1 or more positions | invariant | Pending M4 |
-| AC-03.4 | A score can be explained, not just produced | per-factor contributions sum to the total score within 0.001 | invariant | Pending M4 |
-| AC-03.5 | Scoring is reproducible | 100 consecutive calls for one persona produce 1 distinct ordering | invariant | Pending M4 |
-| AC-03.6 | Scoring is order-independent | shuffling the input 100 times produces 1 distinct output ordering | invariant | Pending M4 |
+| AC-03.2 | Unlikely destinations never outrank suitable ones | 0 inversions where a destination below the cutoff ranks above one at or above it, for any cutoff in 0.0 to 1.0 | invariant | T-RANK-001 |
+| AC-03.3 | Personalization demonstrably changes the result | at least 2 personas receive orderings differing by 1 or more positions | invariant | T-RANK-005 |
+| AC-03.4 | A score can be explained, not just produced | per-factor contributions sum to the total score within 0.001 | invariant | T-RANK-002 |
+| AC-03.5 | Scoring is reproducible | 100 consecutive calls for one persona produce 1 distinct ordering | invariant | T-RANK-003 |
+| AC-03.6 | Scoring is order-independent | shuffling the input 100 times produces 1 distinct output ordering | invariant | T-RANK-004 |
 | AC-03.7 | Personalization does not cost noticeable speed | p95 latency 400 ms or less at 50 concurrent requests | provisional | Pending M6 |
+| AC-03.8 | Personalized ranking beats showing the catalog unranked | mean NDCG@10 of 0.9469 against 0.2449 for catalog order, measured against the labels in [judgments.csv](../api/src/test/resources/eval/judgments.csv), and higher for every persona individually | measured | T-EVAL-001 |
+| AC-03.9 | Ranking quality does not regress | mean NDCG@10 at or above 0.94, the measured value rounded down, against [judgments.csv](../api/src/test/resources/eval/judgments.csv) | measured | T-EVAL-002 |
 
 ---
 
