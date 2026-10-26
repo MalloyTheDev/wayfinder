@@ -3,7 +3,7 @@
 [![CI](https://github.com/MalloyTheDev/wayfinder/actions/workflows/ci.yml/badge.svg)](https://github.com/MalloyTheDev/wayfinder/actions/workflows/ci.yml)
 
 A travel destination platform built from a real product backlog, where every acceptance
-criterion carries a number and names the test that proves it.
+criterion has to declare how it could be proven wrong, and a build gate enforces it.
 
 ## Why this exists
 
