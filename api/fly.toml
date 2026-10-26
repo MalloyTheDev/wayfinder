@@ -1,0 +1,64 @@
+# Fly.io deployment.
+#
+# NOT YET APPLIED. Written and reasoned about, but never run: deploying needs a Fly
+# account, a Neon database and a payment method, none of which exist for this project yet.
+# The Dockerfile and the migration command underneath it are verified locally; everything
+# in this file is unverified until a first deploy, and that distinction is deliberate
+# rather than a hedge.
+#
+# app and primary_region are placeholders. `fly launch` will set them.
+
+app = "wayfinder"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  # Migrations run in the release step below, never on instance startup. Two instances
+  # racing to migrate during a blue-green cutover is the failure this prevents; Flyway
+  # takes a lock, but a separate step gives a clean failure boundary and readable logs.
+  SPRING_FLYWAY_ENABLED = "false"
+
+[deploy]
+  # Runs once per deploy, in a temporary machine built from the new image, before any
+  # instance takes traffic. A non-zero exit stops the deploy, which is why the Dockerfile
+  # forwards arguments: Fly does not override ENTRYPOINT, so without forwarding these
+  # flags would be dropped and the deploy would proceed against an unmigrated schema.
+  #
+  # Verified locally: applies both migrations and exits 0; exits 1 against an unreachable
+  # database.
+  release_command = "--spring.flyway.enabled=true --spring.main.web-application-type=none --spring.context.exit=onRefresh"
+  release_command_timeout = "10m"
+
+  # Starts the new version alongside the old one and only moves traffic once health
+  # checks pass. Costs double the machines for the length of a deploy, which at one
+  # machine is a rounding error.
+  strategy = "bluegreen"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+
+  # The whole point of paying for an always-warm machine. A recruiter clicking a link
+  # will not wait out a cold JVM start, and scale-to-zero makes the live URL feel broken
+  # rather than fast. auto_stop_machines must be "off" rather than absent, because the
+  # default is to stop idle machines.
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    # Readiness, not liveness. Liveness answers "is the process alive", which is true
+    # well before the context has refreshed and the pool has connected. Routing traffic
+    # on liveness is how a blue-green cutover produces a burst of 500s that looks like a
+    # bad release.
+    path = "/actuator/health/readiness"
+    method = "GET"
+    interval = "15s"
+    timeout = "3s"
+    grace_period = "30s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"

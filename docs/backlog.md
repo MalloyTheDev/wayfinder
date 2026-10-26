@@ -176,3 +176,5 @@ limits, generalized beyond any single story.
 | AC-00.4 | Every criterion above declares how it could be falsified | 0 criteria lacking a basis, a measure consistent with that basis, or a verification reference | invariant | T-CRIT-001 |
 | AC-00.5 | A failed criterion stops a release | 0 deploys from a pipeline with 1 or more failing criterion tests | invariant | Pending M6 |
 | AC-00.6 | The domain stays independent of the framework and the database | 0 dependencies from the domain package onto Spring, JPA, Jackson, Flyway or SQL | invariant | T-ARCH-001 |
+| AC-00.7 | The service starts fast enough that a blue-green cutover is not a visible outage | median startup 4.22 s in a 512 MB single-CPU container, down from 9.10 s without the AOT cache, a 53.6% reduction, method and figures in [deployment.md](deployment.md) | measured | Pending M6 |
+| AC-00.8 | A bad migration never reaches a running instance | migrations run in 1 release step that exits non-zero on failure, verified locally to exit 1 against an unreachable database, see [deployment.md](deployment.md) | measured | Pending M6 |

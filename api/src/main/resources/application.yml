@@ -8,6 +8,12 @@ spring:
     url: ${WAYFINDER_DB_URL:jdbc:postgresql://localhost:5432/wayfinder}
     username: ${WAYFINDER_DB_USER:wayfinder}
     password: ${WAYFINDER_DB_PASSWORD:wayfinder}
+    hikari:
+      # Small on purpose. Connections cost memory at both ends, and a managed Postgres
+      # free tier counts them. Ten per instance is ample for a read-heavy catalog and
+      # leaves headroom for the migration step to connect during a deploy.
+      maximum-pool-size: 10
+      minimum-idle: 2
 
   jpa:
     hibernate:
@@ -22,8 +28,18 @@ spring:
           time_zone: UTC
 
   flyway:
-    enabled: true
+    # On by default so a developer and the test suite get a migrated schema without
+    # thinking about it. In production this is turned off by environment variable and
+    # migrations run once, in their own step, before any new instance takes traffic. A
+    # failing migration then stops the deploy instead of leaving half the fleet running
+    # against a schema it does not expect.
+    enabled: ${SPRING_FLYWAY_ENABLED:true}
     locations: classpath:db/migration
+
+  lifecycle:
+    # Long enough for in-flight requests to finish, short enough that a stuck request
+    # does not hold a blue-green cutover open indefinitely.
+    timeout-per-shutdown-phase: 25s
 
 management:
   endpoints:
@@ -37,6 +53,10 @@ management:
         enabled: true
 
 server:
+  # Stop accepting new connections, let in-flight requests finish, then exit. Without
+  # this, a deploy or a restart drops whatever was in flight.
+  shutdown: graceful
+
   error:
     # Error responses are built by ApiExceptionHandler. Never leak a stack trace.
     include-stacktrace: never

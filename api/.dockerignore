@@ -1,0 +1,13 @@
+# Build output: the image builds from source, and copying a host-built target/ in would
+# let a stale local jar silently become the thing that ships.
+target/
+
+# Tests do not run in the image build; they run in CI against real Postgres.
+src/test/
+
+.git/
+.gitignore
+.idea/
+*.iml
+.vscode/
+README.md

@@ -25,13 +25,13 @@ properties that hold for any parameterization.
 "Match score below 0.25" is a number somebody chose. "No destination below the cutoff
 outranks one at or above it, **for any cutoff**" cannot be satisfied by choosing a
 convenient number, which is the single strongest objection to quantified requirements.
-Twenty-four of this backlog's thirty-eight criteria are invariants, and that ratio is the
+Twenty-four of this backlog's forty criteria are invariants, and that ratio is the
 design rather than an accident.
 
 Where a number genuinely is the honest form, [the backlog](docs/backlog.md) declares where
 it came from: `measured`, `sourced`, or `provisional`. **Nine thresholds are provisional**,
-meaning chosen by judgment and not yet calibrated. Two are `measured`, and both come from
-the ranking evaluation below. The gate prints that breakdown on every run, because a
+meaning chosen by judgment and not yet calibrated. Four are `measured`: two from the ranking
+evaluation below and two from the deployment measurements. The gate prints that breakdown on every run, because a
 number nobody has checked should not get to sit alongside ones that were.
 
 These are [architectural fitness functions](https://www.thoughtworks.com/radar/techniques/architectural-fitness-function),
@@ -60,10 +60,33 @@ nothing is deployed yet, and this README will not pretend otherwise.
 | M6 | Traceability report, observability, budgets enforced as gates | Planned |
 | M7 | Demo data, documentation, release | Planned |
 
-38 acceptance criteria are defined: 24 invariants, 9 provisional thresholds, 3 categorical,
-2 measured. 12 are verified today; the rest name the milestone that will verify them. The
+40 acceptance criteria are defined: 24 invariants, 9 provisional thresholds, 3 categorical,
+4 measured. 12 are verified today; the rest name the milestone that will verify them. The
 gate prints both ratios on every run, so verification debt and uncalibrated numbers are
 visible rather than discovered later.
+
+## Deployment: prepared, not performed
+
+The container, the migration step and the startup measurements are verified locally. The
+Fly configuration and the deploy workflow are written and reasoned about but have never
+run, because deploying needs an account, a database and a payment method.
+[docs/deployment.md](docs/deployment.md) states precisely which parts are proven and which
+are not.
+
+What is measured, median of three runs each way:
+
+| Environment | Without AOT cache | With AOT cache | Reduction |
+| --- | --- | --- | --- |
+| 512 MB / 1 CPU container | 9.10 s | 4.22 s | **53.6%** |
+| Unconstrained host | 4.17 s | 2.34 s | 43.8% |
+
+The cache is built inside the image against the exact jar and JVM that will run it, since
+it is invalid for any other combination. It costs 106 MB of image and buys faster
+blue-green cutovers rather than faster requests, which is a trade worth naming.
+
+The container also runs unprivileged, settles at 206 MB of a 512 MB limit, and its
+migration step exits non-zero against an unreachable database, which is what stops a bad
+deploy.
 
 ## Ranking quality, measured
 
@@ -99,6 +122,8 @@ label.
 ```
 docs/backlog.md                 36 criteria, each declaring a basis and a verification reference
 docs/prior-art.md               what this borrows, from whom, and what is still missing
+docs/deployment.md              the intended stack, what is verified, and what is not
+api/Dockerfile                  three stages; the AOT cache is built against the jar it will run
 docs/adr/0001-stack-selection.md            Spring Boot, Postgres, React, and why
 docs/adr/0002-measurable-acceptance-criteria.md  the rule, why it is enforced, and how it was wrong
 tools/check-criteria.mjs        the gate, T-CRIT-001, no dependencies
@@ -111,7 +136,7 @@ api/src/main/resources/db/migration/   schema, then 30 seeded reference destinat
 api/src/main/java/.../domain/DestinationScorer.java   the ranking, framework-free and explainable
 api/src/test/resources/eval/           hand-labelled personas and relevance judgments
 api/src/test/java/.../eval/            NDCG and the quality gate
-api/src/test/                          67 tests, including ArchUnit rules and real Postgres
+api/src/test/                          69 tests, including ArchUnit rules and real Postgres
 ```
 
 ## Running the gate
@@ -149,7 +174,7 @@ cd api
 ./mvnw verify
 ```
 
-That runs all 67 tests. The database ones start a real Postgres container, apply both
+That runs all 69 tests. The database ones start a real Postgres container, apply both
 migrations and assert against the result, because ADR-0001 rejected an embedded substitute
 for exactly the CHECK-constraint and ordering behaviour these tests depend on.
 

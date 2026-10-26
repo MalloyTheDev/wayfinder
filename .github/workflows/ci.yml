@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+  # Called by the deploy workflow, so deployment waits on the full suite rather than
+  # racing it.
+  workflow_call:
 
 # Each job does real work. The client build job arrives in M2 alongside the client; a
 # pipeline with jobs that pass because they do nothing is worse than a short pipeline.
