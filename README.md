@@ -60,7 +60,7 @@ api/src/main/java/.../domain/          Destination and its invariants, free of S
 api/src/main/java/.../persistence/     the JPA adapter behind the domain's catalog port
 api/src/main/java/.../web/             the read API and its problem responses
 api/src/main/resources/db/migration/   schema, then 30 seeded reference destinations
-api/src/test/                          53 tests, the database ones against real Postgres
+api/src/test/                          58 tests, including ArchUnit rules and real Postgres
 ```
 
 ## Running the gate
@@ -92,7 +92,7 @@ cd api
 ./mvnw verify
 ```
 
-That runs all 53 tests. The database ones start a real Postgres container, apply both
+That runs all 58 tests. The database ones start a real Postgres container, apply both
 migrations and assert against the result, because ADR-0001 rejected an embedded substitute
 for exactly the CHECK-constraint and ordering behaviour these tests depend on.
 

@@ -14,9 +14,10 @@ import org.junit.jupiter.params.provider.ValueSource;
 /**
  * The domain invariants, tested without Spring or a database.
  *
- * That independence is the point of ADR-0001's layering, and this class is the proof that
- * the layering actually holds: if a framework ever leaks into the domain, this test stops
- * compiling.
+ * That independence is the point of ADR-0001's layering. This class demonstrates it by
+ * construction, but it does not enforce it: an earlier version of this comment claimed a
+ * framework leaking into the domain would stop this test compiling, which was checked and
+ * turned out to be false. ArchitectureTest is what actually enforces it.
  */
 class DestinationTest {
 

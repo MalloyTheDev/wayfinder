@@ -54,8 +54,9 @@ database so that tests exercise the same engine as production.
 the API's OpenAPI description so that a contract change breaks the build rather than
 production.
 
-**Tests:** JUnit 5 with Testcontainers for anything touching persistence, and Playwright
-for the end-to-end checks that map directly onto acceptance criteria.
+**Tests:** JUnit Jupiter 6 (the baseline Spring Boot 4 sets) with Testcontainers for
+anything touching persistence, ArchUnit to enforce the layering above, and Playwright for
+the end-to-end checks that map directly onto acceptance criteria.
 
 **Delivery:** container images built in CI, deployed on a green pipeline.
 

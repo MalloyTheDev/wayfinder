@@ -20,29 +20,14 @@
   <properties>
     <java.version>25</java.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <testcontainers.version>1.21.4</testcontainers.version>
+    <archunit.version>1.5.1</archunit.version>
   </properties>
 
-  <dependencyManagement>
-    <dependencies>
-      <!--
-        Spring Boot 4's parent no longer manages Testcontainers versions the way the 3.x
-        line did, so the BOM is imported here. Dependabot keeps the property current.
-      -->
-      <dependency>
-        <groupId>org.testcontainers</groupId>
-        <artifactId>testcontainers-bom</artifactId>
-        <version>${testcontainers.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
-    </dependencies>
-  </dependencyManagement>
-
   <dependencies>
+    <!-- Not spring-boot-starter-web: that name is deprecated in Boot 4 in favour of this one. -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-web</artifactId>
+      <artifactId>spring-boot-starter-webmvc</artifactId>
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -113,14 +98,36 @@
       <artifactId>spring-boot-testcontainers</artifactId>
       <scope>test</scope>
     </dependency>
+    <!--
+      Testcontainers 2.x coordinates. The 2.0 release prefixed every artifact with
+      "testcontainers-", so the old org.testcontainers:postgresql name does not exist at
+      this version. Versions come from Spring Boot's dependency management, which tracks
+      the 2.x line; pinning them here is what previously held the build two majors back.
+    -->
     <dependency>
       <groupId>org.testcontainers</groupId>
-      <artifactId>junit-jupiter</artifactId>
+      <artifactId>testcontainers-junit-jupiter</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
-      <artifactId>postgresql</artifactId>
+      <artifactId>testcontainers-postgresql</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!--
+      ArchUnit enforces the layering ADR-0001 commits to. Without it, "the domain depends
+      on no framework" is a sentence in a comment that nothing checks, which is precisely
+      the kind of unverified claim this project exists to avoid.
+
+      The plain artifact rather than archunit-junit5, so the rules run as ordinary JUnit
+      tests and the build does not depend on ArchUnit's JUnit integration tracking the
+      Jupiter 6 baseline Boot 4 sets.
+    -->
+    <dependency>
+      <groupId>com.tngtech.archunit</groupId>
+      <artifactId>archunit</artifactId>
+      <version>${archunit.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

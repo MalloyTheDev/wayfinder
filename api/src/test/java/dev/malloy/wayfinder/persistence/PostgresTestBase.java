@@ -4,7 +4,7 @@ import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 /**
@@ -30,8 +30,10 @@ import org.testcontainers.utility.DockerImageName;
 @ImportAutoConfiguration(FlywayAutoConfiguration.class)
 abstract class PostgresTestBase {
 
-    static final PostgreSQLContainer<?> POSTGRES =
-        new PostgreSQLContainer<>(DockerImageName.parse("postgres:17-alpine"));
+    // Not PostgreSQLContainer<?>: Testcontainers 2.x dropped the self-type generic that
+    // the 1.x builder API needed.
+    static final PostgreSQLContainer POSTGRES =
+        new PostgreSQLContainer(DockerImageName.parse("postgres:17-alpine"));
 
     static {
         POSTGRES.start();
