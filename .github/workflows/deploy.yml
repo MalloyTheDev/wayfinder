@@ -12,6 +12,11 @@ concurrency:
   group: deploy-production
   cancel-in-progress: false
 
+# The default for every job. The deploy job widens it to packages: write for the registry
+# push; nothing else needs more than reading source.
+permissions:
+  contents: read
+
 jobs:
   # Deployment waits on the full CI suite rather than racing it. A green pipeline is the
   # precondition for shipping, which is what AC-00.5 asks for.

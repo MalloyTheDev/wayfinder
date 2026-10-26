@@ -10,6 +10,12 @@ on:
   # racing it.
   workflow_call:
 
+# Least privilege. Without this the token gets whatever the repository default is, which
+# is broader than reading source, and a compromised dependency in a build step inherits
+# it. CodeQL flags the omission, correctly.
+permissions:
+  contents: read
+
 # Each job does real work. The client build job arrives in M2 alongside the client; a
 # pipeline with jobs that pass because they do nothing is worse than a short pipeline.
 jobs:
