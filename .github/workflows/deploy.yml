@@ -72,7 +72,7 @@ jobs:
 
       - name: Set up flyctl
         if: steps.configured.outputs.ready == 'true'
-        uses: superfly/flyctl-actions/setup-flyctl@1.5
+        uses: superfly/flyctl-actions/setup-flyctl@1.6
 
       # The release command inside fly.toml runs migrations first and fails the deploy on
       # a non-zero exit, so a bad migration never reaches a running instance.
